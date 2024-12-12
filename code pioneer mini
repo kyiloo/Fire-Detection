@@ -1,0 +1,55 @@
+import time
+import threading
+from pioneer_sdk import Pioneer, Camera
+import cv2
+
+
+mini = Pioneer(ip = '127.0.0.1', mavlink_port=8000, logger = True, connection_method = 'udpout')
+camera = Camera(timeout=0.1, ip='127.0.0.1', port=18000, video_buffer_size=65000, log_connection=True)
+camera.connect()
+
+
+def video(camera):
+    con = camera.connect()
+    while True:
+        photo = camera.get_cv_frame()
+        cv2.imshow('stream', photo)
+        if cv2.waitKey(1) == ord('q'):
+            break
+
+
+
+def bling(mini):
+    while True:
+        mini.led_control(255, 0, 255, 0)
+        time.sleep(0.5)
+        mini.led_control(255, 0, 0, 0)
+        time.sleep(0.5)
+
+
+
+def fly(mini):
+    mini.arm()
+    mini.takeoff()
+    cube = [[0, 0, 1],
+            [0, 1, 1],
+            [1, 1, 1],
+            [1, 0, 1],
+            [0, 0, 1]]
+    for [x, y, z] in cube:
+        mini.go_to_local_point(x, y, z, 0)
+        while not mini.point_reached():
+            time.sleep(0.1)
+
+
+t1 = threading.Thread(target=bling, args=(mini,))
+t2 = threading.Thread(target=fly, args=(mini,))
+t3 = threading.Thread(target=video, args=(camera,))
+
+t1.start()
+t2.start()
+t3.start()
+
+t1.join()
+t2.join()
+t3.join()
